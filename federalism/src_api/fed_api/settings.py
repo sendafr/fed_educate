@@ -98,7 +98,7 @@ else:
 
 
 # 2. Add your Vercel production URL here
-# Replace 'https://your-vercel-app.vercel.app' with your actual Vercel URL
+# Rep'htlace 'https://your-vercel-app.vercel.app' with your actual Vercel URL
 CSRF_TRUSTED_ORIGINS = [
     'https://fed-educate-three.vercel.app', 
     'https://fed-educ-jxwtbwqee-sendawula-freds-projects.vercel.app/'
@@ -112,6 +112,7 @@ CSRF_TRUSTED_ORIGINS = [
 # 3. Ensure CORS is configured (if using django-cors-headers)
 CORS_ALLOWED_ORIGINS = [
     'https://fed-educate-three.vercel.app',
+    'https://uiomawuiijsqkvesfjvf.storage.supabase.co',
     'http://localhost:3000',
     'http://localhost:5173'
 ]
@@ -499,50 +500,49 @@ FILE_UPLOAD_TEMP_DIR = os.path.join(BASE_DIR, 'tmp')
 #STATIC_URL = '/static/'
 #STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
-MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR,'media')
 
-# Celery Configuration
-CELERY_BROKER_URL = "redis://localhost:6379/0"  # Tedis also works on 6379
-CELERY_RESULT_BACKEND = "redis://localhost:6379/1"  # use db 1 for results/progress
+
+# --- Media & S3 Configuration ---
+MEDIA_URL = '/media/'
+# If using S3, MEDIA_ROOT is technically ignored by the storage backend, 
+# but good to define for local fallbacks or static files.
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media') 
+
+# --- Celery Configuration ---
+CELERY_BROKER_URL = "redis://redis:6379/0"
+CELERY_RESULT_BACKEND = "redis://redis:6379/1"
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 30 * 60
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
-# In your celery.py file, ensure it loads these settings
-# app.config_from_object('django.conf:settings', namespace='CELERY')
 
-
-# Tell Django to use S3 backend
+# --- S3 / Supabase Configuration ---
+# Ensure this is set ONCE
 DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
 
-# Put your Supabase S3 credentials here
-AWS_ACCESS_KEY_ID = os.environ.get('SUPABASE_S3_ACCESS_KEY_ID', os.environ.get('AWS_ACCESS_KEY_ID', '90c5e783dda69413c813b49fdbfbc0a0'))
-AWS_SECRET_ACCESS_KEY = os.environ.get('SUPABASE_S3_SECRET_ACCESS_KEY', os.environ.get('AWS_SECRET_ACCESS_KEY', '723132c9d8f3931e48b120de87499567b1ee03c2b41cbbc149b5a7205d01777b'))
+# Credentials (Use Environment Variables in Production!)
+AWS_ACCESS_KEY_ID = os.environ.get('SUPABASE_S3_ACCESS_KEY_ID')
+AWS_SECRET_ACCESS_KEY = os.environ.get('SUPABASE_S3_SECRET_ACCESS_KEY')
 AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME', 'federalism-media')
 
-# Connect directly to Supabase S3 API
+# Supabase S3 Endpoint
+# IMPORTANT: The endpoint usually ends with /storage/v1/s3
 AWS_S3_ENDPOINT_URL = os.environ.get('AWS_S3_ENDPOINT_URL', 'https://uiomawuiijsqkvesfjvf.storage.supabase.co/storage/v1/s3')
-AWS_S3_REGION_NAME = os.environ.get('AWS_S3_REGION_NAME', os.environ.get('AWS_S3_REGION', 'eu-west-1'))
-AWS_DEFAULT_REGION = AWS_S3_REGION_NAME
+AWS_S3_REGION_NAME = os.environ.get('AWS_S3_REGION_NAME', 'eu-west-1')
 
-# Supabase S3 compatibility settings
-AWS_S3_ADDRESSING_STYLE = os.environ.get('AWS_S3_ADDRESSING_STYLE', 'path')
-AWS_S3_SIGNATURE_VERSION = os.environ.get('AWS_S3_SIGNATURE_VERSION', 's3v4')
-AWS_QUERYSTRING_AUTH = False  
+# Compatibility Settings
+AWS_S3_ADDRESSING_STYLE = 'path'
+AWS_S3_SIGNATURE_VERSION = 's3v4'
+AWS_QUERYSTRING_AUTH = False
 AWS_S3_FILE_OVERWRITE = False
-
-# For big files + avoid checksum crash
 AWS_S3_DISABLE_CONTENT_MD5_VALIDATION = True
-AWS_S3_MULTIPART_CHUNK_SIZE = 15 * 1024 * 1024
+AWS_S3_MULTIPART_CHUNK_SIZE = 15 * 1024 * 1024 # 15MB chunks
 
-DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
-
-# Increase upload limits
-DATA_UPLOAD_MAX_MEMORY_SIZE = 1024 * 1024 * 1024 # 1GB
-FILE_UPLOAD_MAX_MEMORY_SIZE = 1024 * 1024 * 10242 # Critical things for Sup
-
+# --- Upload Limits ---
+# 100MB is usually safer for web uploads. 1GB might cause timeouts.
+DATA_UPLOAD_MAX_MEMORY_SIZE = 100 * 1024 * 1024 
+FILE_UPLOAD_MAX_MEMORY_SIZE = 100 * 1024 * 1024
 # 6. Static files config (Whitenoise is great for production)
 STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')

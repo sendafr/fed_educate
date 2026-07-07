@@ -1,6 +1,7 @@
 version: '3.8'
 
 services:
+  # --- Database ---
   db:
     image: postgres:15
     environment:
@@ -17,6 +18,7 @@ services:
       timeout: 5s
       retries: 5
 
+  # --- Redis ---
   redis:
     image: redis:alpine
     ports:
@@ -24,10 +26,12 @@ services:
     volumes:
       - redis_data:/data
 
+  # --- Backend (Django API) ---
   backend:
     build: 
       context: ./src_api
       dockerfile: Dockerfile
+    
     ports:
       - "8000:8000"
     env_file:
@@ -40,10 +44,7 @@ services:
     volumes:
       - ./media:/app/media
       - ./staticfiles:/app/staticfiles
-      # Mount source code for hot-reloading during development
       - ./src_api:/app
-    # Override the Dockerfile CMD to run Gunicorn ONLY
-    # (Migrations and Collectstatic are handled by the startup script below)
     command: >
       sh -c "
         python manage.py migrate --noinput &&
@@ -51,10 +52,12 @@ services:
         gunicorn --bind 0.0.0.0:8000 --reload fed_api.wsgi:application
       "
 
+  # --- Celery Worker ---
   celery-worker:
     build: 
       context: ./src_api
       dockerfile: Dockerfile
+    
     env_file:
       - .env
     depends_on:
@@ -63,16 +66,28 @@ services:
       - backend
     volumes:
       - ./src_api:/app
-    # Run Celery Worker ONLY
     command: >
       sh -c "
         celery -A fed_api worker --loglevel=info
       "
 
+  # --- Frontend (React/Vue/Angular/etc.) ---
+  frontend:
+    build:
+      context: ./fed-frontend
+      dockerfile: Dockerfile
+    
+
+    ports:
+      - "5173:5173"  # Adjust port if your frontend uses a different one (e.g., 3000)
+    depends_on:
+      - backend
+    # Optional: Add environment variables for API URL if needed
+    environment:
+      - VITE_API_URL=http://localhost:8000
+      # Or if using React, you might need:
+      # - REACT_APP_API_URL=http://localhost:8000
+
 volumes:
   postgres_data:
   redis_data:
-
-
-
-
