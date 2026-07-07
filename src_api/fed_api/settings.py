@@ -222,7 +222,7 @@ WSGI_APPLICATION = 'fed_api.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 import os
-"""
+
 # Determine if we are connecting to an external host
 db_host = os.environ.get('DB_HOST', 'db')
 is_external = not db_host.startswith('db') and not db_host.startswith('localhost')
@@ -240,14 +240,17 @@ DATABASES = {
             'sslmode': 'require' if is_external else 'prefer', 
         }
     }
-}"""
+}
 
+
+"""
 DATABASES = {
     'default': {
         'ENGINE':  'django.db.backends.sqlite3',
         'NAME': 'db.sqlite'
     }
 }
+"""
 
 
 
