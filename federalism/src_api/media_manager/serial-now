@@ -1,0 +1,267 @@
+from rest_framework import serializers
+from .models import MediaUpload, MediaCategory, MediaTag, MediaFile, MediaDownload
+from django.conf import settings
+from django.urls import reverse
+
+# ─── MediaUpload Serializer ────────────────────────────────────────────────────
+class MediaUploadSerializer(serializers.ModelSerializer):
+    file_size_mb = serializers.SerializerMethodField()
+    duration_formatted = serializers.SerializerMethodField()
+    user_username = serializers.CharField(source='user.username', read_only=True)
+    file_url = serializers.SerializerMethodField()  # NEW: Full URL for playback
+    thumbnail_url = serializers.SerializerMethodField()  # NEW: Full URL for thumbnail
+
+    class Meta:
+        model = MediaUpload
+        fields = [
+            'id', 'user', 'user_username', 'media_type', 'file', 'file_url', 'title', 
+            'description', 'thumbnail', 'thumbnail_url', 'duration', 'file_size', 
+            'file_size_mb', 'uploaded_at', 'updated_at', 'is_public', 'views_count', 
+            'duration_formatted'
+        ]
+        read_only_fields = [
+            'user', 'uploaded_at', 'updated_at', 'views_count', 'user_username', 
+            'file_url', 'thumbnail_url'
+        ]
+
+    def get_file_size_mb(self, obj):
+        return obj.get_file_size_mb()
+
+    def get_duration_formatted(self, obj):
+        if obj.duration:
+            minutes = obj.duration // 60
+            seconds = obj.duration % 60
+            return f"{minutes}:{seconds:02d}"
+        return None
+    
+    def get_file(self, obj):
+        if obj.file:
+            # Return URL that will be served by the public media view
+            file_path = str(obj.file)
+            return f'/api/media/{file_path}'
+        return None
+    
+    def get_thumbnail(self, obj):
+        if obj.thumbnail:
+            thumb_path = str(obj.thumbnail)
+            return f'/api/media/{thumb_path}'
+        return None
+
+    
+    """
+    def get_file_url(self, obj):
+        if obj.file:
+            # Generates full URL: http://localhost:8000/media/...
+            request = self.context.get('request')
+            if request and hasattr(obj.file, 'url'):
+                return request.build_absolute_uri(obj.file.url)
+            return obj.file.url
+        return None
+
+    def get_thumbnail_url(self, obj):
+        if obj.thumbnail:
+            request = self.context.get('request')
+            if request and hasattr(obj.thumbnail, 'url'):
+                return request.build_absolute_uri(obj.thumbnail.url)
+            return obj.thumbnail.url
+        return None"""
+
+    def create(self, validated_data):
+        validated_data['user'] = self.context['request'].user
+        return super().create(validated_data)
+    
+# ─── MediaCategory Serializer ─────────────────────────────────────────────────
+class MediaCategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MediaCategory
+        fields = ['id', 'name', 'slug', 'description', 'icon']
+
+# ─── MediaFile Serializer (Create/Update) ─────────────────────────────────────
+class MediaFileCreateUpdateSerializer(serializers.ModelSerializer):
+    category_id = serializers.IntegerField(required=False, allow_null=True, write_only=True)
+    tag_ids = serializers.PrimaryKeyRelatedField(
+        queryset=MediaTag.objects.all(),
+        many=True,
+        required=False,
+        write_only=True,
+        source='tags'
+    )
+
+    class Meta:
+        model = MediaFile
+        fields = [
+            'title', 'description', 'media_type', 'file', 'thumbnail',
+            'category_id', 'tag_ids', 'duration', 'file_size', 'status',
+            'is_featured'
+        ]
+
+    def validate_title(self, value):
+        if not value or len(value.strip()) == 0:
+            raise serializers.ValidationError("Title cannot be empty.")
+        return value
+
+    def validate_media_type(self, value):
+        valid_types = ['video', 'image', 'document', 'audio', 'infographic', 'chart', 'map']
+        if value not in valid_types:
+            raise serializers.ValidationError(f"Invalid media type. Must be one of: {', '.join(valid_types)}")
+        return value
+
+    def create(self, validated_data):
+        validated_data['user'] = self.context['request'].user
+        category_id = validated_data.pop('category_id', None)
+        tags = validated_data.pop('tags', [])
+
+        if category_id:
+            validated_data['category_id'] = category_id
+
+        media_file = MediaFile.objects.create(**validated_data)
+        if tags:
+            media_file.tags.set(tags)
+        return  media_file
+
+    def update(self, instance, validated_data):
+        category_id = validated_data.pop('category_id', None)
+        tags = validated_data.pop('tags', None)
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        if category_id is not None:
+            instance.category_id = category_id
+        elif 'category_id' in self.initial_data and self.initial_data['category_id'] is None:
+            instance.category_id = None
+
+        instance.save()
+
+        if tags is not None:
+            instance.tags.set(tags)
+
+        return instance
+    
+
+# ─── MediaDownload Serializer ─────────────────────────────────────────────────
+class MediaDownloadSerializer(serializers.ModelSerializer):
+    media_title = serializers.CharField(source='media.title', read_only=True)
+    user_username = serializers.CharField(source='user.username', read_only=True, allow_null=True)
+
+    class Meta:
+        #model = MediaDownload
+        fields = ['id', 'media', 'media_title', 'user', 'user_username', 'ip_address', 'downloaded_at']
+        read_only_fields = ['user', 'downloaded_at', 'user_username']
+
+    def create(self, validated_data):
+        validated_data['user'] = self.context['request'].user
+        return super().create(validated_data)
+
+
+# ─── MediaTag Serializer ──────────────────────────────────────────────────────
+class MediaTagSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MediaTag
+        fields = ['id', 'name', 'slug']
+        
+"""# media_manager/serializers.py
+from rest_framework import serializers
+from .models import MediaUpload, MediaFile
+
+class MediaUploadSerializer(serializers.ModelSerializer):
+    file = serializers.SerializerMethodField()
+    thumbnail = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = MediaUpload
+        fields = ['id', 'title', 'description', 'media_type', 'file', 'thumbnail', 'created_at', 'file_size_mb']
+    
+    def get_file(self, obj):
+        if obj.file:
+            # Return URL that will be served by the public media view
+            file_path = str(obj.file)
+            return f'/api/media/{file_path}'
+        return None
+    
+    def get_thumbnail(self, obj):
+        if obj.thumbnail:
+            thumb_path = str(obj.thumbnail)
+            return f'/api/media/{thumb_path}'
+        return None"""
+"""
+class MediaFileSerializer(serializers.ModelSerializer):
+    file = serializers.SerializerMethodField()
+    thumbnail = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = MediaFile
+        fields = ['id', 'title', 'description', 'media_type', 'file', 'thumbnail', 'status', 'created_at', 'file_size_mb']
+    
+    def get_file(self, obj):
+        if obj.file:
+            file_path = str(obj.file)
+            return f'/api/media/{file_path}'
+        return None
+    
+    def get_thumbnail(self, obj):
+        if obj.thumbnail:
+            thumb_path = str(obj.thumbnail)
+            return f'/api/media/{thumb_path}'
+        return None"""
+
+
+
+# ─── MediaFile Serializer (Read) ──────────────────────────────────────────────
+class MediaFileSerializer(serializers.ModelSerializer):
+    category = MediaCategorySerializer(read_only=True)
+    tags = MediaTagSerializer(many=True, read_only=True)
+    file_size_mb = serializers.SerializerMethodField()
+    duration_formatted = serializers.SerializerMethodField()
+    user_username = serializers.CharField(source='user.username', read_only=True)
+    file_url = serializers.SerializerMethodField()  # NEW
+    thumbnail_url = serializers.SerializerMethodField()  # NEW
+
+    class Meta:
+        model = MediaFile
+        fields = [
+            'id', 'user', 'user_username', 'title', 'slug', 'description',
+            'media_type', 'file', 'file_url', 'thumbnail', 'thumbnail_url', 
+            'category', 'tags', 'duration', 'file_size', 'file_size_mb', 
+            'status', 'is_featured', 'created_at', 'updated_at', 'published_at', 
+            'views_count', 'downloads_count', 'duration_formatted'
+        ]
+        read_only_fields = [
+            'user', 'slug', 'created_at', 'updated_at', 'views_count',
+            'downloads_count', 'published_at', 'user_username', 'file_url', 'thumbnail_url'
+        ]
+
+    def get_file_size_mb(self, obj):
+        return obj.get_file_size_mb()
+
+    def get_duration_formatted(self, obj):
+        return obj.get_duration_formatted()
+    
+    def get_file(self, obj):
+        if obj.file:
+            file_path = str(obj.file)
+            return f'/api/media/{file_path}'
+        return None
+    
+    def get_thumbnail(self, obj):
+        if obj.thumbnail:
+            thumb_path = str(obj.thumbnail)
+            return f'/api/media/{thumb_path}'
+        return None
+
+
+    """def get_file_url(self, obj):
+        if obj.file:
+            request = self.context.get('request')
+            if request and hasattr(obj.file, 'url'):
+                return request.build_absolute_uri(obj.file.url)
+            return obj.file.url
+        return None
+
+    def get_thumbnail_url(self, obj):
+        if obj.thumbnail:
+            request = self.context.get('request')
+            if request and hasattr(obj.thumbnail, 'url'):
+                return request.build_absolute_uri(obj.thumbnail.url)
+            return obj.thumbnail.url
+        return None"""

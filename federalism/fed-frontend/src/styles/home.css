@@ -1,0 +1,109 @@
+/* src/pages/Home.css */
+.home {
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.hero {
+  text-align: center;
+  padding: 3rem 2rem;
+  background: linear-gradient(135deg, #3498db, #2980b9);
+  color: white;
+  border-radius: 8px;
+  margin-bottom: 2rem;
+}
+
+.hero h1 {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+}
+
+.hero p {
+  font-size: 1.2rem;
+  margin-bottom: 1.5rem;
+}
+
+.btn {
+  display: inline-block;
+  padding: 0.75rem 1.5rem;
+  background: white;
+  color: #2c3e50;
+  text-decoration: none;
+  border-radius: 4px;
+  font-weight: bold;
+  transition: background 0.2s;
+}
+
+.btn:hover {
+  background: #ecf0f1;
+}
+
+.features {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.feature {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  text-align: center;
+}
+
+.feature h3 {
+  color: #2c3e50;
+  margin-top: 0;
+}
+
+.feature p {
+  color: #7f8c8d;
+}
+
+.sections {
+  margin-top: 2rem;
+}
+
+.sections h2 {
+  color: #2c3e50;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.section-card {
+  display: block;
+  background: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  text-decoration: none;
+  color: #2c3e50;
+  transition: transform 0.2s, box-shadow 0.2s;
+  margin-bottom: 1rem;
+}
+
+.section-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.section-card h3 {
+  margin-top: 0;
+}
+
+.section-card p {
+  color: #7f8c8d;
+}
+
+.loading, .error {
+  text-align: center;
+  padding: 2rem;
+  font-size: 1.2rem;
+}
+
+.error {
+  color: #e74c3c;
+}
