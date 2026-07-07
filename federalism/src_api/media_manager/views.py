@@ -28,6 +28,8 @@ from django.http import FileResponse, HttpResponse
 from django.views.decorators.http import condition
 from django.views.decorators.cache import cache_page
 from django.views.decorators.csrf import csrf_exempt
+from rest_framework.response import Response
+from rest_framework import status
 from celery.result import AsyncResult
 from django.conf import settings
 import os
@@ -63,45 +65,54 @@ from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
 
 
+from django.http import Http404, HttpResponseRedirect
+from django.conf import settings
+import boto3
+from botocore.client import Config
+
 @csrf_exempt
 def serve_media_file(request, file_path):
+    # Clean the path to prevent traversal
     file_path = file_path.lstrip('/')
-    full_path = os.path.join(settings.MEDIA_ROOT, file_path)
     
-    # ADD THESE 3 LINES - replace your startswith check with this
-    media_root_abs = os.path.abspath(settings.MEDIA_ROOT)
-    full_path_abs = os.path.abspath(full_path)
+    # Retrieve the model instance to verify ownership/permissions if needed
+    # Assuming you have a model like MediaFile or MediaUpload with a 'file' field
+    # You might need to query the DB to find which record owns this path
+    # For now, we assume the path is valid and generate the URL directly
     
-    if os.path.commonpath([full_path_abs, media_root_abs]) != media_root_abs:
-        return HttpResponse('Access Denied', status=403)
-    
-    if not os.path.exists(full_path):
-        raise Http404("File not found")
-    
-    mime_type, _ = mimetypes.guess_type(full_path)
-    mime_type = mime_type or 'application/octet-stream'
-    file_size = os.path.getsize(full_path)
-    
-    range_header = request.META.get('HTTP_RANGE', '').strip()
-    if range_header:
-        range_match = re.match(r'bytes=(\d+)-(\d*)', range_header)
-        if range_match:
-            start = int(range_match.group(1))
-            end = int(range_match.group(2)) if range_match.group(2) else file_size - 1
-            length = end - start + 1
-            
-            response = FileResponse(open(full_path, 'rb'), content_type=mime_type)
-            response.status_code = 206
-            response['Content-Range'] = f'bytes {start}-{end}/{file_size}'
-            response['Content-Length'] = str(length)
-            response['Accept-Ranges'] = 'bytes'
-            return response
-    
-    response = FileResponse(open(full_path, 'rb'), content_type=mime_type)
-    response['Accept-Ranges'] = 'bytes'
-    response['Content-Length'] = str(file_size)
-    return response
+    bucket = getattr(settings, 'AWS_STORAGE_BUCKET_NAME', None)
+    endpoint_url = getattr(settings, 'AWS_S3_ENDPOINT_URL', None)
+    aws_access_key = getattr(settings, 'AWS_ACCESS_KEY_ID', None)
+    aws_secret_key = getattr(settings, 'AWS_SECRET_ACCESS_KEY', None)
+    aws_region = getattr(settings, 'AWS_S3_REGION_NAME', None) or 'eu-west-1'
 
+    if not all([bucket, endpoint_url, aws_access_key, aws_secret_key, aws_region]):
+        raise Http404("S3 configuration missing.")
+
+    try:
+        s3 = boto3.client(
+            's3',
+            aws_access_key_id=aws_access_key,
+            aws_secret_access_key=aws_secret_key,
+            region_name=aws_region,
+            endpoint_url=endpoint_url,
+            config=Config(signature_version='s3v4', region_name=aws_region),
+        )
+
+        # Generate a temporary URL (e.g., valid for 1 hour)
+        url = s3.generate_presigned_url(
+            'get_object',
+            Params={'Bucket': bucket, 'Key': file_path},
+            ExpiresIn=3600,
+        )
+
+        # Redirect the user to S3 directly
+        return HttpResponseRedirect(url)
+
+    except Exception as e:
+        # Log the error in production
+        # logger.error(f"Error generating S3 URL: {e}")
+        raise Http404("File not found or access denied.")
 
 """@csrf_exempt
 def serve_media_file(request, file_path):
@@ -241,7 +252,7 @@ def media_upload_list_create(request):
                 'data': {
                     **serializer.data,
                     'status': 'pending', # Explicitly return the current status
-                    'task_id':'task_id' # <--SEND THIS TO FRONTEND
+                    'task_id':task_id.id # <--SEND THIS TO FRONTEND
                     
                 }
             }, status=status.HTTP_201_CREATED)
@@ -249,34 +260,49 @@ def media_upload_list_create(request):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-
-from rest_framework.decorators import api_view
-from rest_framework.response import Response
-from celery.result import AsyncResult
-
 @api_view(['GET'])
 def media_progress(request, task_id):
     task = AsyncResult(task_id)
     
+    # Handle case where task ID is invalid
+    if task.state == 'PENDING' and task.info is None:
+        # Check if task exists in backend (sometimes PENDING means 'not found')
+        # If you are sure the task was sent, it might just be waiting in queue
+        return Response({'percent': 0, 'status': 'Queued (Waiting for worker)'})
+
     if task.state == 'PENDING':
         return Response({'percent': 0, 'status': 'Queued'})
+    
     elif task.state == 'PROGRESS':
+        # Safely get info, fallback to defaults if None
+        info = task.info or {}
         return Response({
-            'percent': task.info.get('percent', 0),
-            'status': task.info.get('status', 'Processing...')
+            'percent': info.get('percent', 0),
+            'status': info.get('status', 'Processing...')
         })
+    
     elif task.state == 'SUCCESS':
+        info = task.info or {}
         return Response({
             'percent': 100, 
             'status': 'Completed',
-            'media_id': task.info.get('media_id')
+            'media_id': info.get('media_id')
         })
-    else: # FAILURE
+    
+    elif task.state == 'FAILURE':
+        info = task.info or {}
+        error_msg = info.get('status', str(task.info)) if info else 'Unknown error'
         return Response({
             'percent': 0, 
-            'status': task.info.get('status', 'Failed')
-        }, status=500)
-
+            'status': f'Failed: {error_msg}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    else:
+        # Handle other states like REVOKED
+        return Response({
+            'percent': 0, 
+            'status': f'Task state: {task.state}'
+        }, status=status.HTTP_400_BAD_REQUEST)
 
 
 """@api_view(['GET'])
