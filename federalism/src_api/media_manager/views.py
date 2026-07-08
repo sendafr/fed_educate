@@ -75,6 +75,47 @@ def serve_media_file(request, file_path):
     file_path = file_path.lstrip('/')
     full_path = os.path.join(settings.MEDIA_ROOT, file_path)
     
+    # ADD THESE 3 LINES - replace your startswith check with this
+    media_root_abs = os.path.abspath(settings.MEDIA_ROOT)
+    full_path_abs = os.path.abspath(full_path)
+    
+    if os.path.commonpath([full_path_abs, media_root_abs]) != media_root_abs:
+        return HttpResponse('Access Denied', status=403)
+    
+    if not os.path.exists(full_path):
+        raise Http404("File not found")
+    
+    mime_type, _ = mimetypes.guess_type(full_path)
+    mime_type = mime_type or 'application/octet-stream'
+    file_size = os.path.getsize(full_path)
+    
+    range_header = request.META.get('HTTP_RANGE', '').strip()
+    if range_header:
+        range_match = re.match(r'bytes=(\d+)-(\d*)', range_header)
+        if range_match:
+            start = int(range_match.group(1))
+            end = int(range_match.group(2)) if range_match.group(2) else file_size - 1
+            length = end - start + 1
+            
+            response = FileResponse(open(full_path, 'rb'), content_type=mime_type)
+            response.status_code = 206
+            response['Content-Range'] = f'bytes {start}-{end}/{file_size}'
+            response['Content-Length'] = str(length)
+            response['Accept-Ranges'] = 'bytes'
+            return response
+    
+    response = FileResponse(open(full_path, 'rb'), content_type=mime_type)
+    response['Accept-Ranges'] = 'bytes'
+    response['Content-Length'] = str(file_size)
+    return response
+
+#This serve_media_file view 
+
+"""@csrf_exempt
+def serve_media_file(request, file_path):
+    file_path = file_path.lstrip('/')
+    full_path = os.path.join(settings.MEDIA_ROOT, file_path)
+    
     if os.path.commonpath([os.path.abspath(full_path), os.path.abspath(settings.MEDIA_ROOT)]) != os.path.abspath(settings.MEDIA_ROOT):
         return HttpResponse('Access Denied', status=403)
     
