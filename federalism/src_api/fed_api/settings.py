@@ -508,14 +508,35 @@ MEDIA_URL = '/media/'
 # but good to define for local fallbacks or static files.
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media') 
 
+# fed_api/settings.py
+import os
+
 # --- Celery Configuration ---
+# ✅ Use environment variables so you can set them in Koyeb Dashboard
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
+CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:6379/1")
+
+# Keep other settings
+CELERY_TASK_TRACK_STARTED = True
+CELERY_TASK_TIME_LIMIT = 30 * 60
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+
+# ✅ Add these to prevent memory issues (matches supervisord.conf)
+CELERY_WORKER_POOL = "solo"
+CELERY_WORKER_CONCURRENCY = 1
+CELERY_WORKER_MAX_TASKS_PER_CHILD = 50
+CELERY_TASK_ACKS_LATE = True
+
+"""# --- Celery Configuration ---
 CELERY_BROKER_URL = "redis://redis:6379/0"
 CELERY_RESULT_BACKEND = "redis://redis:6379/1"
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 30 * 60
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
-CELERY_RESULT_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'"""
 
 # --- S3 / Supabase Configuration ---
 # Ensure this is set ONCE
