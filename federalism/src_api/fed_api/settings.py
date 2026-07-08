@@ -530,6 +530,9 @@ AWS_STORAGE_BUCKET_NAME = os.environ.get('AWS_STORAGE_BUCKET_NAME', 'federalism-
 # IMPORTANT: The endpoint usually ends with /storage/v1/s3
 AWS_S3_ENDPOINT_URL = os.environ.get('AWS_S3_ENDPOINT_URL', 'https://uiomawuiijsqkvesfjvf.storage.supabase.co/storage/v1/s3)
 AWS_S3_REGION_NAME = os.environ.get('AWS_S3_REGION_NAME', 'eu-west-1')
+AWS_S3_OBJECT_PARAMETERS = {
+    'CacheControl': 'max-age=86400',
+}
 
 # Compatibility Settings
 AWS_S3_ADDRESSING_STYLE = 'path'
