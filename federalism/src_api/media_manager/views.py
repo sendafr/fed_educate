@@ -210,7 +210,7 @@ def serve_media_file(request, file_path):
     response['Access-Control-Expose-Headers'] = 'Content-Range, Content-Length, Accept-Ranges'
     response['Cache-Control'] = 'public, max-age=86400'
     
-    return response
+    return response"""
 
  
 
@@ -300,9 +300,11 @@ def media_progress(request, task_id):
             'percent': 0, 
             'status': f'Task state: {task.state}'
         }, status=status.HTTP_400_BAD_REQUEST)
+        
+        
 
-
-"""@api_view(['GET'])
+"""
+@api_view(['GET'])
 @permission_classes([AllowAny])
 def media_progress(request, task_id):
     result = AsyncResult(task_id)
@@ -316,7 +318,6 @@ def media_progress(request, task_id):
     
     return Response({'percent': 0, 'status': result.state})
 
-"""
 
 
 
