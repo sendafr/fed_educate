@@ -72,50 +72,6 @@ from botocore.client import Config
 
 @csrf_exempt
 def serve_media_file(request, file_path):
-    # Clean the path to prevent traversal
-    file_path = file_path.lstrip('/')
-    
-    # Retrieve the model instance to verify ownership/permissions if needed
-    # Assuming you have a model like MediaFile or MediaUpload with a 'file' field
-    # You might need to query the DB to find which record owns this path
-    # For now, we assume the path is valid and generate the URL directly
-    
-    bucket = getattr(settings, 'AWS_STORAGE_BUCKET_NAME', None)
-    endpoint_url = getattr(settings, 'AWS_S3_ENDPOINT_URL', None)
-    aws_access_key = getattr(settings, 'AWS_ACCESS_KEY_ID', None)
-    aws_secret_key = getattr(settings, 'AWS_SECRET_ACCESS_KEY', None)
-    aws_region = getattr(settings, 'AWS_S3_REGION_NAME', None) or 'eu-west-1'
-
-    if not all([bucket, endpoint_url, aws_access_key, aws_secret_key, aws_region]):
-        raise Http404("S3 configuration missing.")
-
-    try:
-        s3 = boto3.client(
-            's3',
-            aws_access_key_id=aws_access_key,
-            aws_secret_access_key=aws_secret_key,
-            region_name=aws_region,
-            endpoint_url=endpoint_url,
-            config=Config(signature_version='s3v4', region_name=aws_region),
-        )
-
-        # Generate a temporary URL (e.g., valid for 1 hour)
-        url = s3.generate_presigned_url(
-            'get_object',
-            Params={'Bucket': bucket, 'Key': file_path},
-            ExpiresIn=3600,
-        )
-
-        # Redirect the user to S3 directly
-        return HttpResponseRedirect(url)
-
-    except Exception as e:
-        # Log the error in production
-        # logger.error(f"Error generating S3 URL: {e}")
-        raise Http404("File not found or access denied.")
-
-"""@csrf_exempt
-def serve_media_file(request, file_path):
     file_path = file_path.lstrip('/')
     full_path = os.path.join(settings.MEDIA_ROOT, file_path)
     
@@ -213,7 +169,7 @@ def serve_media_file(request, file_path):
     response['Access-Control-Expose-Headers'] = 'Content-Range, Content-Length, Accept-Ranges'
     response['Cache-Control'] = 'public, max-age=86400'
     
-    return response"""
+    return response
 
  
 
