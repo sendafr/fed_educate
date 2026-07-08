@@ -293,25 +293,25 @@ class MediaFileSerializer(serializers.ModelSerializer):
     def get_duration_formatted(self, obj):
         return obj.get_duration_formatted()
 
-    def get_file(self, obj):
-    # Return the presigned URL directly if available, otherwise fallback
-    return generate_presigned_object_url(obj.file)
-    
     """def get_file(self, obj):
+    # Return the presigned URL directly if available, otherwise fallback
+    return generate_presigned_object_url(obj.file)"""
+    
+    def get_file(self, obj):
         if obj.file:
             file_path = str(obj.file)
             return f'/api/serve_media_file/{file_path}'
-        return None"""
+        return None
 
-    def get_thumbnail(self, obj):
-    # Return the presigned URL directly if available, otherwise fallback
-    return generate_presigned_object_url(obj.thumbnail)
-    
     """def get_thumbnail(self, obj):
+    # Return the presigned URL directly if available, otherwise fallback
+    return generate_presigned_object_url(obj.thumbnail)"""
+    
+    def get_thumbnail(self, obj):
         if obj.thumbnail:
             thumb_path = str(obj.thumbnail)
             return f'/api/serve_media_file/{thumb_path}'
-        return None"""
+        return None
 
     def get_file_url(self, obj):
         return generate_presigned_object_url(obj.file)
