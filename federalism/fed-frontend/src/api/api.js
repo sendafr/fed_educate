@@ -400,19 +400,19 @@ const mediaFileAPI = {
 // ─── External Media API ───────────────────────────────────────────
 const mediaExternalAPI = {
   getAll: (filters = {}) =>
-    api.get('/media_external_manager/external/', { params: filters }),
+    api.get('/external_manager/', { params: filters }),
 
   getById: (id) =>
-    api.get(`/media_external_manager/external/${id}/`),
+    api.get(`/external_manager/${id}/`),
 
   create: (data) =>
-    api.post('/media_external_manager/external/', data),
+    api.post('/external_manager/', data),
 
   update: (id, data) =>
-    api.put(`/media_external_manager/external/${id}/`, data),
+    api.put(`/external_manager/${id}/`, data),
 
   delete: (id) =>
-    api.delete(`/media_external_manager/external/${id}/`),
+    api.delete(`/external_manager/${id}/`),
 };
 
 // ─── Media Category API ───────────────────────────────────────────
