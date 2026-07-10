@@ -256,7 +256,7 @@ def media_upload_list_create(request):
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-
+"""
 @api_view(['GET'])
 def media_progress(request, task_id):
     task = AsyncResult(task_id)
@@ -294,16 +294,16 @@ def media_progress(request, task_id):
             'status': f'Failed: {error_msg}'
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
-    else:
-        # Handle other states like REVOKED
-        return Response({
-            'percent': 0, 
-            'status': f'Task state: {task.state}'
-        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    # Handle other states like REVOKED
+    return Response({
+        'percent': 0, 
+        'status': f'Task state: {task.state}'
+    }, status=status.HTTP_400_BAD_REQUEST)"""
         
         
 
-"""
+
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def media_progress(request, task_id):
@@ -322,7 +322,7 @@ def media_progress(request, task_id):
 
 
 
-"""
+
 @api_view(['GET', 'POST'])
 @permission_classes([AllowAny])
 def media_upload_list_create(request):
@@ -454,7 +454,7 @@ def media_upload_detail(request, pk):
         return Response(
             {'message': 'Media upload deleted successfully.'},
             status=status.HTTP_204_NO_CONTENT
-        )"""
+        )
 
 
 # ─── Signed URL for media upload (for private S3 buckets) ─────────────────────

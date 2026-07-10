@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 export default defineConfig({
@@ -21,7 +21,7 @@ export default defineConfig({
     proxy: {
       // Local development proxy to your Koyeb backend
       '/api': {
-        target: 'http://localhost:8000', 
+        target: 'http://backend:8000', 
         changeOrigin: true,
         secure: false,
       },

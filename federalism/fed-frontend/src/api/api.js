@@ -10,7 +10,7 @@ import axios from 'axios';
 
 
 // OR if using VITE_API_URL (recommended):
-//const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'; // Fallback for local dev
+//const API_URL = import.meta.env.VITE_API_URL  || 'http://backend:8000'; // Fallback for local dev
 //const api = axios.create({ baseURL: API_URL });
 // ✅ 1. Define the Base URL correctly
 // Use VITE_API_URL if set. If not provided, default to relative '/api' for deployed builds
