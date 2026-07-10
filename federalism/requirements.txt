@@ -38,4 +38,4 @@ boto3
 django-storages[boto3]
 celery
 redis
-supervisor
+supervisor==4.2.5
