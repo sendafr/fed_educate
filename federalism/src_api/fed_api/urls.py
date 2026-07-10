@@ -58,8 +58,8 @@ urlpatterns = [
     # Backwards-compatible alias: some frontends use /api/auth/ directly
     path('api/auth/', include('users.urls')),
     path('api/media_manager/', include('media_manager.urls')),
-    path('api/media_external_manager/', include('media_external_manager.urls')),
-    path('api/', include('media_external_manager.urls')),
+    path('api/media_external_manager/external/', include('media_external_manager.urls')),
+    path('api/external', include('media_external_manager.urls')),
     path('api/health/', health_check, name='api_health_check'),
     path('api/health/storage/', storage_health_check, name='api_health_storage_check'),
 ]
