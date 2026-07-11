@@ -46,4 +46,6 @@ urlpatterns = [
     path('media_download/<int:pk>/', views.media_download_detail, name='media_download_detail'),
     path('serve_media_file/<path:file_path>', views.serve_media_file, name='serve_media_file'),
     path('progress/<str:task_id>/', views.media_progress, name='media-progress'),
+    path('get-upload-endpoint/', views.get_upload_endpoint),
+    path('upload-final/', views.upload_final),  
 ]

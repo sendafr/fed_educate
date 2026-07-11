@@ -1,54 +1,61 @@
+import os, tempfile, subprocess
 from celery import shared_task
-from .models import MediaUpload
-from django.core.files import File
-import tempfile
-import os
+import boto3
+from django.conf import settings
 
 @shared_task(bind=True, max_retries=3)
 def process_media_task(self, media_id):
     media = None
+    thumb_path = None
     try:
         media = MediaUpload.objects.get(id=media_id)
-        
-        # Mark as processing
         media.status = 'processing'
         media.save()
+
+        self.update_state(state='PROGRESS', meta={'percent': 10})
+
+        # 1. The file is already on B2. We just stream it
+        file_url = media.file_url # MUST be https://... from upload-final
+        if not file_url:
+            raise Exception("file_url is empty. Did you use upload-final endpoint?")
         
-        self.update_state(state='PROGRESS', meta={'current': 1, 'total': 3, 'percent': 33, 'status': 'Downloading media...'})
+        # 2. Temp file for thumbnail only
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp_thumb:
+            thumb_path = tmp_thumb.name
 
-        # Download file from S3 to a temporary local file for processing
-        with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(media.file.name)) as tmp_file:
-            tmp_path = tmp_file.name
-            # Open the S3 file and write to temp
-            with media.file.open('rb') as s3_file:
-                tmp_file.write(s3_file.read())
+        # 3. Generate thumbnail directly from https
+        subprocess.run([
+            'ffmpeg', '-ss', '00:00:02', '-i', file_url, 
+            '-vframes', '1', '-y', thumb_path
+        ], check=True, timeout=600)
+        
+        self.update_state(state='PROGRESS', meta={'percent': 70})
 
-        try:
-            self.update_state(state='PROGRESS', meta={'current': 2, 'total': 3, 'percent': 66, 'status': 'Generating thumbnail...'})
-            
-            # Run ffmpeg on the local temp file
-            thumb_path = f"{tmp_path}_thumb.jpg"
-            subprocess.run([
-                'ffmpeg', '-i', tmp_path, 
-                '-ss', '00:00:01', '-vframes', '1', thumb_path, '-y'
-            ], check=True, timeout=120)
-
-            # Upload thumbnail back to S3
-            with open(thumb_path, 'rb') as f:
-                media.thumbnail.save(f"{media.id}_thumb.jpg", File(f))
-            
-        finally:
-            # Cleanup temp files
-            if os.path.exists(tmp_path): os.remove(tmp_path)
-            if os.path.exists(thumb_path): os.remove(thumb_path)
-
+        # 4. Upload thumbnail to B2 directly
+        s3 = boto3.client(
+            's3',
+            aws_access_key_id=settings.B2_KEY_ID,
+            aws_secret_access_key=settings.B2_APP_KEY,
+            endpoint_url=settings.B2_ENDPOINT
+        )
+        thumb_key = f"thumbnails/{media.id}.jpg"
+        s3.upload_file(thumb_path, settings.B2_BUCKET, thumb_key, ExtraArgs={'ACL': 'public-read'})
+        
+        # 5. SAVE URLS TO DB - THIS IS WHAT FIXES PREVIEW
+        media.thumbnail_url = f"{settings.B2_ENDPOINT}/{settings.B2_BUCKET}/{thumb_key}"
         media.status = 'completed'
         media.save()
-        self.update_state(state='SUCCESS', meta={'current': 3, 'total': 3, 'percent': 100, 'status': 'Completed'})
+        
+        self.update_state(state='SUCCESS', meta={'percent': 100})
         return {'status': 'Completed', 'media_id': media_id}
 
-    except Exception as exc:
+    except Exception as e:
         if media:
             media.status = 'failed'
+            media.error_message = str(e) # add this field to model
             media.save()
-        raise self.retry(exc=exc, countdown=60)
+        self.update_state(state='FAILED', meta={'percent': 0, 'error': str(e)})
+        raise self.retry(exc=e, countdown=60)
+    finally:
+        if thumb_path and os.path.exists(thumb_path): 
+            os.remove(thumb_path)

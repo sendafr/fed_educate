@@ -10,6 +10,9 @@ function Media() {
   const [mediaTag, setMediaTag] = useState([]);
   const [activeTab, setActiveTab] = useState('uploads');
   const[taskId, setTaskId] = useState(null);
+  const [file, setFile] = useState(null);
+  const [progress, setProgress] = useState(0);
+  const [uploading, setUploading] = useState(false);
   
   const[processStatus,setProcessStatus] = useState('Queued');
 
@@ -247,7 +250,53 @@ function Media() {
       }, 1000); 
   };
 
+
+
   const handleSubmit = async (e) => {
+     e.preventDefault();
+     if (!file) return alert("Please select a file");
+  
+     setUploading(true);
+     setProgress(0);
+
+     try {
+       // STEP 1: Get signed upload URL from Django
+        const { data: ep } = await axios.post('/api/get-upload-endpoint/', {
+          filename: file.name,
+          filesize: file.size,
+          filetype: file.type,
+          title: formData.title // send other metadata too
+        });
+
+       // STEP 2: Upload file DIRECT to Supabase. Bypasses 50MB
+        await axios.put(ep.upload_url, file, {
+          headers: { 'Content-Type': file.type },
+          onUploadProgress: (e) => setProgress(Math.round(e.loaded * 100 / e.total))
+        });
+
+       // STEP 3: Tell Django to save DB + start celery
+        await axios.post('/api/upload-final/', {
+          file_url: ep.public_url,
+          filename: file.name,
+          filesize: file.size,
+          title: formData.title,
+          description: formData.description,
+        //... any other fields from formData
+        });
+
+        alert("Upload successful! Processing...");
+        resetForm();
+        setActiveTab('files');
+
+        } catch (err) {
+        console.error(err);
+        alert("Upload failed: " + err.message);
+        } finally {
+        setUploading(false);
+        }
+    };
+
+  {/*const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setUploadProgress(0);
@@ -336,7 +385,7 @@ function Media() {
       setLoading(false);
       setUploadProgress(0);
     }
-  };
+  };*/}
 
   const handleEdit = (media) => {
     setFormData({
@@ -820,6 +869,20 @@ function Media() {
                 maxLength="300"
               />
             </div>
+            <div className="form-group">
+              <label htmlFor="file">File *</label>
+              <input 
+                id="file"
+                type="file" 
+                name="file"
+                onChange={(e) => setFile(e.target.files[0])}
+                required
+                accept="video/*,image/*,audio/*"
+              />
+              {file && <small>{file.name} - {(file.size / 1024 / 1024).toFixed(2)} MB</small>}
+            </div>
+
+              {uploading && <progress value={progress} max="100">{progress}%</progress>}
 
             <div className="form-group">
               <label htmlFor="media_type">Media Type *</label>

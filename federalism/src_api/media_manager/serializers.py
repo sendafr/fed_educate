@@ -56,6 +56,7 @@ class MediaUploadSerializer(serializers.ModelSerializer):
     user_username = serializers.CharField(source='user.username', read_only=True)
     file_url = serializers.SerializerMethodField()  # NEW: Full URL for playback
     thumbnail_url = serializers.SerializerMethodField()  # NEW: Full URL for thumbnail
+    storage_provider = serializers.CharField(required=False, allow_blank=True)
 
     class Meta:
         model = MediaUpload
@@ -63,12 +64,36 @@ class MediaUploadSerializer(serializers.ModelSerializer):
             'id', 'user', 'user_username', 'media_type', 'file', 'file_url', 'title', 
             'description', 'thumbnail', 'thumbnail_url', 'duration', 'file_size', 
             'file_size_mb', 'uploaded_at', 'updated_at', 'is_public', 'views_count', 
-            'duration_formatted', 'status'
+            'duration_formatted', 'status', 'storage_provider'
         ]
         read_only_fields = [
             'user', 'uploaded_at', 'updated_at', 'views_count', 'user_username', 
             'file_url', 'thumbnail_url', 'status'
         ]
+
+    def get_file_url(self, obj):
+        # If we saved a public https url, use it. Else use presigned
+        if obj.file_url and obj.file_url.startswith('http'):
+            return obj.file_url
+        if obj.file:
+            return generate_presigned_object_url(obj.file)
+        return None
+
+    def get_thumbnail_url(self, obj):
+        if obj.thumbnail_url and obj.thumbnail_url.startswith('http'):
+            return obj.thumbnail_url
+        if obj.thumbnail:
+            return generate_presigned_object_url(obj.thumbnail)
+        return None
+
+    def create(self, validated_data):
+        validated_data['user'] = self.context['request'].user
+        # If frontend sends us a cloud url, don't touch 'file' field
+        if validated_data.get('file_url', '').startswith('http'):
+            validated_data.pop('file', None)
+        return super().create(validated_data)
+
+
 
     def get_file_size_mb(self, obj):
         return obj.get_file_size_mb()
@@ -88,16 +113,16 @@ class MediaUploadSerializer(serializers.ModelSerializer):
     def get_thumbnail(self, obj):
         return generate_presigned_object_url(obj.thumbnail)
 
-    def get_file_url(self, obj):
-        return generate_presigned_object_url(obj.file)
+    #def get_file_url(self, obj):
+        #return generate_presigned_object_url(obj.file)
 
-    def get_thumbnail_url(self, obj):
-        return generate_presigned_object_url(obj.thumbnail)
+    #def get_thumbnail_url(self, obj):
+        #return generate_presigned_object_url(obj.thumbnail)
 
    
-    def create(self, validated_data):
-        validated_data['user'] = self.context['request'].user
-        return super().create(validated_data)
+    #def create(self, validated_data):
+        #validated_data['user'] = self.context['request'].user
+        #return super().create(validated_data)
     
 # ─── MediaCategory Serializer ─────────────────────────────────────────────────
 class MediaCategorySerializer(serializers.ModelSerializer):

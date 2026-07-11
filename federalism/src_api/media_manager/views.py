@@ -319,6 +319,58 @@ def media_progress(request, task_id):
     return Response({'percent': 0, 'status': result.state})
 
 
+import os, uuid
+from django.conf import settings
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework import status
+from botocore.client import Config
+from supabase import create_client
+
+supabase = create_client(
+    os.getenv("SUPABASE_URL","https://uiomawuiijsqkvesfjvf.storage.supabase.co"), 
+    os.getenv("SUPABASE_SERVICE_ROLE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVpb21hd3VpaWpzcWt2ZXNmanZmIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4MjgwOTY3MCwiZXhwIjoyMDk4Mzg1NjcwfQ.ktADeeYDA_eBS5RGHwFhhHkN0z_6R1l3JJ3eeV9UqgY")
+    )
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def get_upload_endpoint(request):
+    filename = request.data.get('filename')
+    filesize = int(request.data.get('filesize', 0))
+    filetype = request.data.get('filetype', 'application/octet-stream')
+    path = f"user_{request.user.id}/{uuid.uuid4()}_{filename}"
+
+    # 1. < 50MB -> Old way
+    if filesize < 50 * 1024 * 1024:
+        return Response({"endpoint": "django", "url": "/api/media_manager/", "method": "POST"})
+
+    # 2. Supabase 50MB - 50GB
+    if filesize <= 50 * 1024 * 1024 * 1024: 
+        try:
+            res = supabase.storage.from_("videos").create_signed_upload_url(path)
+            public_url = f"{os.getenv('SUPABASE_URL')}/storage/v1/object/public/videos/{path}"
+            return Response({"endpoint": "supabase_direct", "url": res['signedURL'], "public_url": public_url, "method": "PUT"})
+        except: pass
+
+    # 3. B2 >50GB
+    s3 = boto3.client('s3', aws_access_key_id=aws_access_key, aws_secret_access_key=aws_secret_key, endpoint_url=endpoint_url, config=Config(signature_version='s3v4', region_name=aws_region))
+    url = s3.generate_presigned_url('put_object', Params={'Bucket': bucket, 'Key': path, 'ContentType': filetype}, ExpiresIn=3600)
+    public_url = f"{endpoint_url}/{bucket}/{path}"
+    return Response({"endpoint": "s3_direct", "url": url, "public_url": public_url, "method": "PUT"})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def upload_final(request):
+    serializer = MediaUploadSerializer(data=request.data, context={'request': request})
+    if serializer.is_valid():
+        media_instance = serializer.save()
+        task = process_media_task.delay(media_instance.id)
+        return Response({'data': {'id': media_instance.id, 'file_url': media_instance.file_url, 'task_id': task.id}}, status=201)
+    return Response(serializer.errors, status=400)
+
+
 
 
 
