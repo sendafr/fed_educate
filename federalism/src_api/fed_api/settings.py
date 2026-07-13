@@ -98,10 +98,10 @@ else:
 
 
 # 2. Add your Vercel production URL here
-# Rep'htlace 'https://your-vercel-app.vercel.app' with your actual Vercel URL
+# Replace 'https://your-vercel-app.vercel.app' with your actual Vercel URL
 CSRF_TRUSTED_ORIGINS = [
     'https://fed-educate.vercel.app', 
-    #'https://fed-educ-jxwtbwqee-sendawula-freds-projects.vercel.app/'
+    #'https://fed-educ-jxwtbwqee-sendawula-freds-projects.vercel.app'
     'https://fed-educate-ktjtion7s-sendawula-freds-projects.vercel.app/'
     #'https://fed-educ-2o2zlqosy-sendawula-freds-projects.vercel.app',
     'https://prime-cordi-fed-devo-7c4aa839.koyeb.app/'
