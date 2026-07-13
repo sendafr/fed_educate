@@ -14,6 +14,7 @@ import axios from 'axios';
 //const api = axios.create({ baseURL: API_URL });
 // ✅ 1. Define the Base URL correctly
 // Use VITE_API_URL if set. If not provided, default to relative '/api' for deployed builds
+const VITE_API_URL = 'https://prime-cordi-fed-devo-7c4aa839.koyeb.app'; // Replace with your actual backend URL
 const RAW_API = import.meta.env.VITE_API_URL || '';
 const API_BASE = RAW_API ? `${RAW_API.replace(/\/$/, '')}/api` : '/api';
 
@@ -32,8 +33,8 @@ console.log('API_Base:', API_BASE);
   //console.warn('👉 Set VITE_API_URL to your backend host or /api if using the frontend proxy.');
 //}
 
-//console.log('🚀 RAW VITE_API_URL:', rawApiUrl);
-//console.log('🚀 API_BASE_URL:', API_BASE_URL);
+console.log('🚀 RAW VITE_API_URL:', rawApiUrl);
+console.log('🚀 API_BASE_URL:', API_BASE_URL);
 
 
 
