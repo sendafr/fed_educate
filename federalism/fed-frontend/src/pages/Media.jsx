@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { mediaUploadAPI, mediaFileAPI, mediaCategoryAPI, mediaTagAPI } from '../api/api';
-import MediaProgress from '../components/MediaProgress';
 import '../styles/media.css';
 
 function Media() {
@@ -9,13 +8,6 @@ function Media() {
   const [mediaCategory, setMediaCategory] = useState([]);
   const [mediaTag, setMediaTag] = useState([]);
   const [activeTab, setActiveTab] = useState('uploads');
-  const[taskId, setTaskId] = useState(null);
-  const [file, setFile] = useState(null);
-  const [progress, setProgress] = useState(0);
-  const [uploading, setUploading] = useState(false);
-  
-  const[processStatus,setProcessStatus] = useState('Queued');
-
 
   const [formData, setFormData] = useState({
     title: '',
@@ -142,6 +134,51 @@ function Media() {
     }
   };
 
+    const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    
+    // Define allowed file types for each media type
+    const acceptMap = {
+      video: 'video/*',
+      image: 'image/*',
+      document: '.pdf,.doc,.docx,.txt,.xls,.xlsx,.ppt,.pptx',
+      audio: 'audio/*',
+      infographic: 'image/*',
+      chart: 'image/*,.csv,.xlsx',
+      map: '.kml,.geojson,.pdf,image/*',
+      studycase: '.pdf,.doc,.docx',
+    };
+
+    setFormData((prev) => {
+      const newData = {
+        ...prev,
+        [name]:
+          type === 'checkbox'
+            ? checked
+            : name === 'duration'
+            ? value ? parseInt(value, 10) : ''
+            : value,
+      };
+
+      // If media_type changed, update the file input accept attribute
+      if (name === 'media_type') {
+        const fileInput = document.getElementById('file');
+        if (fileInput) {
+          fileInput.accept = acceptMap[value] || '*/*';
+          // Optional: Clear file if it doesn't match the new type
+          if (prev.file && !fileInput.accept.includes(prev.file.type.split('/')) && !fileInput.accept.includes('.' + prev.file.name.split('.').pop())) {
+             newData.file = null;
+             setFilePreview(null);
+             // Clear preview state if needed
+             setFilePreview(null); 
+          }
+        }
+      }
+      return newData;
+    });
+  };
+
+  {/*
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData((prev) => ({
@@ -153,7 +190,7 @@ function Media() {
           ? value ? parseInt(value, 10) : ''
           : value,
     }));
-  };
+  }; */}
 
   const applyFilePreview = (file) => {
     if (!file) return;
@@ -165,13 +202,43 @@ function Media() {
     }
   };
 
+    const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Simple validation based on extension or MIME type
+    const fileExt = file.name.split('.').pop().toLowerCase();
+    const allowedExtensions = {
+      video: ['mp4', 'mov', 'avi', 'mkv'],
+      image: ['jpg', 'jpeg', 'png', 'gif', 'webp'],
+      document: ['pdf', 'doc', 'docx', 'txt', 'xls', 'xlsx'],
+      audio: ['mp3', 'wav', 'ogg'],
+      map: ['kml', 'geojson', 'pdf'],
+      chart: ['csv', 'xlsx', 'png', 'jpg'],
+    };
+
+    const currentType = formData.media_type;
+    const allowed = allowedExtensions[currentType] || [];
+
+    if (allowed.length > 0 && !allowed.includes(fileExt)) {
+      setError(`Invalid file type for ${currentType}. Allowed: ${allowed.join(', ')}`);
+      e.target.value = ''; // Clear input
+      return;
+    }
+
+    setFormData((prev) => ({ ...prev, file }));
+    applyFilePreview(file);
+    setError(''); // Clear error if valid
+  };
+
+  {/*
   const handleFileChange = (e) => {
     const file = e.target.files?.[0];
     if (file) {
       setFormData((prev) => ({ ...prev, file }));
       applyFilePreview(file);
     }
-  };
+  }; */}
 
   const handleThumbnailChange = (e) => {
     const file = e.target.files?.[0];
@@ -219,7 +286,7 @@ function Media() {
       file: null,
       thumbnail: null,
       mediaCategory_id: '',
-      mediaTag_ids: [],
+      tag_ids: [],
       duration: '',
       status: 'draft',
       is_featured: false,
@@ -231,80 +298,11 @@ function Media() {
     setShowUploadPreview(false);
   };
 
-  const pollCerelyProgrss = (id) => {
-    const timer = setInterval(async () => {
-      try{
-        const res = await anxios.get(`/api/mediaprogress/${id}`);
-        setUploadProgress(re.data.percent); // reuse the same bar for 0 100 processing
-        setProcessStatus(res.data.status); //"processing: Transcoding ..."
-
-        if(res.data.percent >= 100 || res.data.status === 'failed') {
-          clearInterval(timer);
-          setLoading(false);
-          if (res.data.status === 'Completed') setSuccess('processing Complete');
-        }
-      }catch{
-        clearInterval(timer);
-        setLoading(false);
-      }
-      }, 1000); 
-  };
-
-
-
   const handleSubmit = async (e) => {
-     e.preventDefault();
-     if (!file) return alert("Please select a file");
-  
-     setUploading(true);
-     setProgress(0);
-
-     try {
-       // STEP 1: Get signed upload URL from Django
-        const { data: ep } = await axios.post('/api/get-upload-endpoint/', {
-          filename: file.name,
-          filesize: file.size,
-          filetype: file.type,
-          title: formData.title // send other metadata too
-        });
-
-       // STEP 2: Upload file DIRECT to Supabase. Bypasses 50MB
-        await axios.put(ep.upload_url, file, {
-          headers: { 'Content-Type': file.type },
-          onUploadProgress: (e) => setProgress(Math.round(e.loaded * 100 / e.total))
-        });
-
-       // STEP 3: Tell Django to save DB + start celery
-        await axios.post('/api/upload-final/', {
-          file_url: ep.public_url,
-          filename: file.name,
-          filesize: file.size,
-          title: formData.title,
-          description: formData.description,
-        //... any other fields from formData
-        });
-
-        alert("Upload successful! Processing...");
-        resetForm();
-        setActiveTab('files');
-
-        } catch (err) {
-        console.error(err);
-        alert("Upload failed: " + err.message);
-        } finally {
-        setUploading(false);
-        }
-    };
-
-  {/*const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
-    setUploadProgress(0);
-    setProcessStatus('Queued'); // add this state
     setError('');
     setSuccess('');
 
-    
     if (!formData.title.trim()) {
       setError('Title is required');
       return;
@@ -327,7 +325,7 @@ function Media() {
         submitData.append('status', formData.status);
         submitData.append('is_featured', formData.is_featured ? 'true' : 'false');
         if (formData.mediaCategory_id) submitData.append('category_id', formData.mediaCategory_id);
-        (formData.mediaTag_ids || []).forEach((id) => submitData.append('tag_ids', id));
+        formData.tag_ids.forEach((id) => submitData.append('tag_ids', id));
       }
 
       // Only append files if they've actually been selected (not for updates)
@@ -358,17 +356,6 @@ function Media() {
         response = await api.create(submitData, config);
         setDataState((prev) => [response.data.data, ...prev]);
         setSuccess('Media uploaded successfully!');
-      } if (!editingId) {
-
-        //NEW UPLOAD
-        response = await api.create(submitData, config); // returns {task_id: "..."}
-
-        setTaskId(response.data.task_id); // save task_id
-        setUploadProgress(0);// reset bar to start processing %
-        pollCeleryProgress(response.data.task_id); //start polling
-
-        setDataState((prev) => [response.data.data, ...prev]);
-
       }
 
       resetForm();
@@ -385,7 +372,7 @@ function Media() {
       setLoading(false);
       setUploadProgress(0);
     }
-  };*/}
+  };
 
   const handleEdit = (media) => {
     setFormData({
@@ -395,7 +382,7 @@ function Media() {
       file: null,
       thumbnail: null,
       mediaCategory_id: media.category?.id || '',
-      mediaTag_ids: media.tags?.map((t) => t.id) || [],
+      tag_ids: media.tags?.map((t) => t.id) || [],
       duration: media.duration || '',
       status: media.status || 'draft',
       is_featured: media.is_featured || false,
@@ -437,32 +424,14 @@ function Media() {
     try {
       setDownloadProgress((prev) => ({ ...prev, [mediaId]: 0 }));
 
-      // Try to get a signed URL from backend for private buckets
-      let url = fileUrl;
-      const signedApi = activeTab === 'uploads' ? mediaUploadAPI : mediaFileAPI;
-      try {
-        const signedResp = await signedApi.getSignedUrl(mediaId);
-        const signedUrl =
-          signedResp?.data?.signed_url ||
-          signedResp?.data?.data?.signed_url ||
-          signedResp?.signed_url ||
-          signedResp?.data?.signedUrl ||
-          null;
-        if (signedUrl) {
-          url = signedUrl;
-        }
-      } catch (signedErr) {
-        console.warn('Signed URL fetch failed, falling back to fileUrl', signedErr);
-      }
+      const isAbsoluteUrl = fileUrl.startsWith('http');
+      const url = isAbsoluteUrl ? fileUrl : `${window.location.origin}${fileUrl}`;
 
-      const isAbsoluteUrl = url.startsWith('http');
-      const finalUrl = isAbsoluteUrl ? url : `${window.location.origin}${url}`;
-
-      const response = await fetch(finalUrl, {
+      const response = await fetch(url, {
         method: 'GET',
-        credentials: 'omit', // <-- Changed from 'include' to 'omit' to fix Supabase CORS
+        credentials: 'include',
       });
-      
+
       if (!response.ok) {
         throw new Error(`Download failed with status ${response.status}`);
       }
@@ -538,33 +507,8 @@ function Media() {
   };
 
   const openPreview = (media) => {
-    (async () => {
-      let preview = media;
-      const directUrl = media.file_url || media.file || media.signed_url || null;
-
-      if (directUrl) {
-        preview = { ...media, signed_url: directUrl };
-      } else {
-        const signedApi = activeTab === 'uploads' ? mediaUploadAPI : mediaFileAPI;
-        try {
-          const signedResp = await signedApi.getSignedUrl(media.id);
-          const signedUrl =
-            signedResp?.data?.signed_url ||
-            signedResp?.data?.data?.signed_url ||
-            signedResp?.signed_url ||
-            signedResp?.data?.signedUrl ||
-            null;
-          if (signedUrl) {
-            preview = { ...media, signed_url: signedUrl };
-          }
-        } catch (err) {
-          console.warn('Could not fetch signed URL for preview, falling back to original URL', err);
-        }
-      }
-
-      setPreviewMedia(preview);
-      setShowPreviewModal(true);
-    })();
+    setPreviewMedia(media);
+    setShowPreviewModal(true);
   };
 
   const closePreview = () => {
@@ -594,8 +538,8 @@ function Media() {
     return colors[status] || '#6c757d';
   };
   const renderPreviewContent = (media) => {
-  const { media_type, file_url, file, title, signed_url } = media;
-  const previewSrc = signed_url || file_url || file;
+  const { media_type, file_url, file, title } = media;
+  const previewSrc = file_url || file;
 
   if (!previewSrc) {
     return <p className="preview-unavailable">No file available for preview.</p>;
@@ -668,7 +612,7 @@ function Media() {
             Download File
           </a>
         </div>
-      );
+      );  
   }
 };
 
@@ -869,20 +813,6 @@ function Media() {
                 maxLength="300"
               />
             </div>
-            <div className="form-group">
-              <label htmlFor="file">File *</label>
-              <input 
-                id="file"
-                type="file" 
-                name="file"
-                onChange={(e) => setFile(e.target.files[0])}
-                required
-                accept="video/*,image/*,audio/*"
-              />
-              {file && <small>{file.name} - {(file.size / 1024 / 1024).toFixed(2)} MB</small>}
-            </div>
-
-              {uploading && <progress value={progress} max="100">{progress}%</progress>}
 
             <div className="form-group">
               <label htmlFor="media_type">Media Type *</label>
@@ -922,7 +852,7 @@ function Media() {
                 <label htmlFor="category_id">Category</label>
                 <select
                   id="category_id"
-                  name="mediaCategory_id"
+                  name="category_id"
                   value={formData.mediaCategory_id}
                   onChange={handleChange}
                 >
@@ -957,16 +887,16 @@ function Media() {
             <div className="form-group">
               <label>Tags</label>
               <div className="tags-list">
-                  {mediaTag.map((tag) => (
-                    <label key={tag.id} className="tag-checkbox">
-                      <input
-                        type="checkbox"
-                        checked={formData.mediaTag_ids.includes(tag.id)}
-                        onChange={() => handleMediaTagToggle(tag.id)}
-                      />
-                      <span>{tag.name}</span>
-                    </label>
-                  ))}
+                {mediaTag.map((mediaTag) => (
+                  <label key={mediaTag.id} className="tag-checkbox">
+                    <input
+                      type="checkbox"
+                      checked={formData.mediaTag_ids.includes(mediaTag.id)}
+                      onChange={() => handleMediaTagToggle(mediaTag.id)}
+                    />
+                    <span>{mediaTag.name}</span>
+                  </label>
+                ))}
               </div>
             </div>
           )}
@@ -1016,6 +946,35 @@ function Media() {
                 transition: 'all 0.3s ease',
               }}
             >
+       
+            <label htmlFor="file">Media File {!editingId && '*'}</label>
+            <input
+              id="file"
+              type="file"
+              name="file"
+            onChange={handleFileChange}
+            accept={formData.media_type === 'video' ? 'video/*' : 
+              formData.media_type === 'image' ? 'image/*' : 
+              formData.media_type === 'document' ? '.pdf,.doc,.docx,.txt,.xls,.xlsx' : 
+              formData.media_type === 'audio' ? 'audio/*' : 
+              formData.media_type === 'map' ? '.kml,.geojson,.pdf,image/*' : 
+              formData.media_type === 'chart' ? 'image/*,.csv,.xlsx' : 
+              '*/*'} 
+            // Note: The logic above is a fallback. The handleChange function will set it dynamically.
+            // You can also just leave it as accept="" or accept="*/*" since handleChange updates it.
+            accept="" 
+            />
+            <p style={{ fontSize: '0.9rem', color: '#666', marginTop: '0.5rem' }}>
+            Drag & drop a file here or click to select
+            </p>
+              {formData.file && (
+            <p style={{ marginTop: '0.5rem', color: '#28a745', fontWeight: 'bold' }}>
+              ✓ {formData.file.name}
+            </p>
+              )}
+             </div>
+
+              {/*
               <label htmlFor="file">Media File {!editingId && '*'}</label>
               <input
                 id="file"
@@ -1032,7 +991,7 @@ function Media() {
                   ✓ {formData.file.name}
                 </p>
               )}
-            </div>
+            </div> */}
 
             <div className="form-group">
               <label htmlFor="thumbnail">Thumbnail</label>
@@ -1081,15 +1040,12 @@ function Media() {
             </div>
           )}
 
-          {(uploadProgress > 0 || taskId)  && (
+          {uploadProgress > 0 && uploadProgress < 100 && (
             <div className="progress-section">
               <div className="progress-bar">
                 <div className="progress-fill" style={{ width: `${uploadProgress}%` }} />
               </div>
               <p>{uploadProgress}% uploaded</p>
-              <br> <p> 
-                {taskId ? processStatus: `${uploadProgress}% uploaded`}
-                </p></br>
             </div>
           )}
 

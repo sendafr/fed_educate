@@ -400,19 +400,19 @@ const mediaFileAPI = {
 // ─── External Media API ───────────────────────────────────────────
 const mediaExternalAPI = {
   getAll: (filters = {}) =>
-    api.get('/media_external_manager/external/external_media/', { params: filters }),
+    api.get('/media_external_manager/external_media/', { params: filters }),
 
   getById: (id) =>
-    api.get(`/media_external_manager/external/external_media/${id}/`),
+    api.get(`/media_external_manager/external_media/${id}/`),
 
   create: (data) =>
     api.post('/media_external_manager/external_media/', data),
 
   update: (id, data) =>
-    api.put(`/media_external_manager/external/external_media_downlods/${id}/`, data),
+    api.put(`/media_external_manager/external_media_downlods/${id}/`, data),
 
   delete: (id) =>
-    api.delete(`/media_external_manager/external/external_media_downlods/${id}/`),
+    api.delete(`/media_external_manager/external_media_downlods/${id}/`),
 };
 
 // ─── Media Category API ───────────────────────────────────────────
@@ -526,7 +526,7 @@ const comparisonAPI = {
 
 const caseStudyAPI = {
   getAll: async (filters = {}) => {
-    const response = await api.get('/', { params: filters });  // Changed to /
+    const response = await api.get('/caseStudy/', { params: filters });  // Changed to /
     return response;
   },
 
@@ -541,7 +541,7 @@ const caseStudyAPI = {
   },
 
   create: async (caseStudyData) => {
-    const response = await api.post('/', caseStudyData);  // Changed to /
+    const response = await api.post('/caseStudy/', caseStudyData);  // Changed to /
     return response;
   },
 

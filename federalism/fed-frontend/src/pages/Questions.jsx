@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { questionAPI } from '../api/api';
+import { questionAPI ,quizAPI} from '../api/api';
 import '../styles/questions.css';
 
 function Question() {
@@ -40,7 +40,8 @@ function Question() {
 
   const fetchQuizzes = async () => {
     try {
-      const response = await questionAPI.getAll('/quiz/');
+      const response = await quizAPI.getAll('/quiz/');
+      console.log("API returned:", response.data);
       setQuizzes(response.data.data || []);
     } catch (err) {
       console.error('Failed to fetch quizzes:', err);
@@ -92,11 +93,11 @@ function Question() {
 
     try {
       if (editingId) {
-        const response = await questionAPI.put(`/question/${editingId}/`, formData);
+        const response = await questionAPI.update(`/question/${editingId}/`, formData);
         setQuestions(questions.map((q) => (q.id === editingId ? response.data.data : q)));
         setEditingId(null);
       } else {
-        const response = await questionAPI.post('/question/', formData);
+        const response = await questionAPI.create('/question/', formData);
         setQuestions([response.data.data, ...questions]);
       }
       setFormData({
