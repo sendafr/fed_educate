@@ -96,7 +96,7 @@ else:
 
 # 2. Add your Vercel production URL here
 CSRF_TRUSTED_ORIGINS = [
-    'https://fed-educate-ten.vercel.app', 
+    'https://fed-educate.vercel.app', 
     'https://fed-educate-ktjtion7s-sendawula-freds-projects.vercel.app',  # <-- Removed trailing slash
     'https://prime-cordi-fed-devo-7c4aa839.koyeb.app',                    # <-- Removed trailing slash
     'http://localhost:3000', 
@@ -105,7 +105,7 @@ CSRF_TRUSTED_ORIGINS = [
 
 # 3. Ensure CORS is configured
 CORS_ALLOWED_ORIGINS = [
-    'https://fed-educate-ten.vercel.app',
+    'https://fed-educate.vercel.app',
     'https://fed-educate-ktjtion7s-sendawula-freds-projects.vercel.app',  # <-- Add this here too just in case you use this preview deployment branch
     'https://uiomawuiijsqkvesfjvf.storage.supabase.co',
     'http://localhost:3000',
