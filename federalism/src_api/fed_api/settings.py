@@ -53,7 +53,7 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 # CSRF_COOKIE_SECURE = True
 #CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOW_HEADERS = ['*']
+#CORS_ALLOW_HEADERS = ['*']
 CORS_ALLOW_METHODS = ['GET','POST','PUT', 'PATCH','DELETE','OPTIONS']
 CORS_ALLOW_HEADERS = ['range', 'content-type', 'authorization']
 
@@ -94,37 +94,25 @@ else:
     if os.environ.get('Koyeb') or os.environ.get('Koyeb_Deployment_ID'):
         ALLOWED_HOSTS.append('*') # Allow all hosts in Koyeb environment"""
 
-
-
-
 # 2. Add your Vercel production URL here
-# Replace 'https://your-vercel-app.vercel.app' with your actual Vercel URL
 CSRF_TRUSTED_ORIGINS = [
     'https://fed-educate.vercel.app', 
-    #'https://fed-educ-jxwtbwqee-sendawula-freds-projects.vercel.app'
-    'https://fed-educate-ktjtion7s-sendawula-freds-projects.vercel.app/'
-    #'https://fed-educ-2o2zlqosy-sendawula-freds-projects.vercel.app',
-    'https://prime-cordi-fed-devo-7c4aa839.koyeb.app/'
-    #'prime-cordi-fed-devo-7c4aa839.koyeb.app', # Keep this only if you test via Koyel preview
-    'http://localhost:3000', # For local development
-    'http://localhost:5173' # For local development with Vite
+    'https://fed-educate-ktjtion7s-sendawula-freds-projects.vercel.app',  # <-- Removed trailing slash
+    'https://prime-cordi-fed-devo-7c4aa839.koyeb.app',                    # <-- Removed trailing slash
+    'http://localhost:3000', 
+    'http://localhost:5173' 
 ]
 
-# 3. Ensure CORS is configured (if using django-cors-headers)
+# 3. Ensure CORS is configured
 CORS_ALLOWED_ORIGINS = [
     'https://fed-educate.vercel.app',
+    'https://fed-educate-ktjtion7s-sendawula-freds-projects.vercel.app',  # <-- Add this here too just in case you use this preview deployment branch
     'https://uiomawuiijsqkvesfjvf.storage.supabase.co',
     'http://localhost:3000',
     'http://localhost:5173'
 ]
 
-#CSRF_TRUSTED_ORIGINS = ['https://prime-cordi-fed-devo-7c4aa839.koyeb.app']
 
-#ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1,https://prime-cordi-fed-devo-7c4aa839.koyeb.app').split(',')
-#LLOWED_HOSTS = [h.strip() for h in ALLOWED_HOSTS]
-
-#ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost,*").split(",")
-#CORS_ALLOWED_ORIGINS = config("CORS_ALLOWED_ORIGINS", default="http://localhost:5173").split(",")
 
 
 
