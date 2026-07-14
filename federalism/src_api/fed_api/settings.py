@@ -102,14 +102,24 @@ CSRF_TRUSTED_ORIGINS = [
     'http://localhost:3000', 
     'http://localhost:5173' 
 ]
-
+"""
 # 3. Ensure CORS is configured
 CORS_ALLOWED_ORIGINS = [
     'https://fed-educate-seven.vercel.app',
     'https://fed-educate-ktjtion7s-sendawula-freds-projects.vercel.app',  # <-- Add this here too just in case you use this preview deployment branch
-    'https://uiomawuiijsqkvesfjvf.storage.supabase.co',
+    
     'http://localhost:3000',
     'http://localhost:5173'
+]"""
+
+
+
+# 2. Get the allowed origins from your Koyeb environment variables
+# Fallback to local development URLs if the variable isn't set
+CORS_ALLOWED_ORIGINS = [
+    os.getenv("CORS_ALLOWED_ORIGIN_1", "http://localhost:5173"), # local Vite dev port
+    os.getenv("CORS_ALLOWED_ORIGIN_2", "https://fed-educate-seven.vercel.app"),
+    os.getenv("CORS_ALLOWED_ORIGIN_3", "https://uiomawuiijsqkvesfjvf.storage.supabase.co"),
 ]
 
 
@@ -157,9 +167,8 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
-      # <- MOVE THIS TO LINE 1
+    'corsheaders.middleware.CorsMiddleware',  # Move this to the very top (Line 1)
     'django.middleware.security.SecurityMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
@@ -168,7 +177,8 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'allauth.account.middleware.AccountMiddleware',
-    #'fed_api.middleware.MediaCORSHeaderMiddleware', # Add this line
+    #'fed_api.middleware.MediaCORSHeaderMiddleware',
+]
     
 
 ]
