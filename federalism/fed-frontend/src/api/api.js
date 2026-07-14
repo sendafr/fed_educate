@@ -33,8 +33,8 @@ console.log('API_Base:', API_BASE);
   //console.warn('👉 Set VITE_API_URL to your backend host or /api if using the frontend proxy.');
 //}
 
-console.log('🚀 RAW VITE_API_URL:', rawApiUrl);
-console.log('🚀 API_BASE_URL:', API_BASE_URL);
+//console.log('🚀 RAW VITE_API_URL:', rawApiUrl);
+//console.log('🚀 API_BASE_URL:', API_BASE_URL);
 
 
 

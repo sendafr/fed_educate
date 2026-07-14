@@ -188,7 +188,7 @@ MIDDLEWARE = [
 ]
     
 
-]
+
 
 """MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
