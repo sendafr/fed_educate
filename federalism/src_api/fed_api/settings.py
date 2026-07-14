@@ -55,7 +55,14 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 CORS_ALLOW_CREDENTIALS = True
 #CORS_ALLOW_HEADERS = ['*']
 CORS_ALLOW_METHODS = ['GET','POST','PUT', 'PATCH','DELETE','OPTIONS']
-CORS_ALLOW_HEADERS = ['range', 'content-type', 'authorization']
+#CORS_ALLOW_HEADERS = ['range', 'content-type', 'authorization']
+
+from corsheaders.defaults import default_headers
+
+# Allow specific headers for video streaming + all standard Django/DRF defaults
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    'range',  # Crucial for video seeking/streaming
+]
 
 env_hosts = os.environ.get('ALLOWED_HOSTS', '')
 if env_hosts:
@@ -442,7 +449,7 @@ REST_FRAMEWORK = {
     #"http://127.0.0.1:8000",
     #'https://prime-cordi-fed-devo-7c4aa839.koyeb.app',
 #] 
-# Allow specific headers for video streaming
+"""# Allow specific headers for video streaming
 CORS_ALLOW_HEADERS = [
     'accept',
     'accept-encoding',
@@ -455,7 +462,7 @@ CORS_ALLOW_HEADERS = [
     'x-requested-with',
     'range',  # Important for video seeking
 ]
-
+"""
 #CORS_ALLOW_ALL_ORIGINS = False
 #CORS_ALLOW_CREDENTIALS = True
 
