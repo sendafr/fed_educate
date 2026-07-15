@@ -53,16 +53,20 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 # CSRF_COOKIE_SECURE = True
 #CORS_ALLOW_ALL_ORIGINS = False
 CORS_ALLOW_CREDENTIALS = True
-#CORS_ALLOW_HEADERS = ['*']
+
 CORS_ALLOW_METHODS = ['GET','POST','PUT', 'PATCH','DELETE','OPTIONS']
 #CORS_ALLOW_HEADERS = ['range', 'content-type', 'authorization']
 
 from corsheaders.defaults import default_headers
 
-# Allow specific headers for video streaming + all standard Django/DRF defaults
+# Allow all default headers (Content-Type, Authorization, etc.) plus any extras
 CORS_ALLOW_HEADERS = list(default_headers) + [
-    'range',  # Crucial for video seeking/streaming
+    'range',  # For video streaming
+    # Add any other custom headers here if needed
+ 
 ]
+
+
 
 env_hosts = os.environ.get('ALLOWED_HOSTS', '')
 if env_hosts:
@@ -109,28 +113,18 @@ CSRF_TRUSTED_ORIGINS = [
     'http://localhost:3000', 
     'http://localhost:5173' 
 ]
-"""
-# 3. Ensure CORS is configured
+
+
+# ... (keep your ALLOWED_HOSTS and CSRF_TRUSTED_ORIGINS as they are) ...
+
+# 1. Enable CORS for specific origins
 CORS_ALLOWED_ORIGINS = [
-    'https://fed-educate-seven.vercel.app',
-    'https://fed-educate-ktjtion7s-sendawula-freds-projects.vercel.app',  # <-- Add this here too just in case you use this preview deployment branch
-    
-    'http://localhost:3000',
-    'http://localhost:5173'
-]"""
-
-
-
-# 2. Get the allowed origins from your Koyeb environment variables
-# Fallback to local development URLs if the variable isn't set
-CORS_ALLOWED_ORIGINS = [
-    os.getenv("CORS_ALLOWED_ORIGIN_1", "http://localhost:5173"), # local Vite dev port
-    os.getenv("CORS_ALLOWED_ORIGIN_2", "https://fed-educate-seven.vercel.app"),
+    "https://fed-educate-seven.vercel.app",
+    "https://fed-educate-ktjtion7s-sendawula-freds-projects.vercel.app",
+    "http://localhost:3000",
+    "http://localhost:5173",
     os.getenv("CORS_ALLOWED_ORIGIN_3", "https://uiomawuiijsqkvesfjvf.storage.supabase.co"),
 ]
-
-
-
 
 
 # Application definition
